@@ -4,7 +4,7 @@
   "description": "nodeknockout2016",
   "main": "index.js",
   "scripts": {
-    "start": "node dist/server/index.js",
+    "start": "./bin/server.sh",
     "build": "gulp build && cross-env NODE_ENV=production webpack --config client-webpack.prod.config.js",
     "watch:server": "gulp watch",
     "build:server": "gulp build",
@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "express": "^4.13.3",
+    "forever": "^0.15.3",
     "phaser": "^2.6.2",
     "socket.io": "^1.5.1"
   },
