@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node dist/server/index.js",
+    "build": "gulp build && cross-env NODE_ENV=production webpack --config client-webpack.prod.config.js",
     "watch:server": "gulp watch",
     "build:server": "gulp build",
     "watch:client": "webpack -w --config client-webpack.config.js",
