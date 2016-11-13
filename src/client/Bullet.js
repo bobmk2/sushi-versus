@@ -68,11 +68,9 @@ class Bullet {
 
     effect.animations.add('empty', [4], 1,false);
     if (this.typeName === 'tamago') {
-      console.log("TAMAGO")
       effect.animations.add('charging', [1], 1,false);
       effect.animations.add('full', [0], 1,false);
     } else if (this.typeName === 'maguro') {
-      console.log("MAGURO")
       effect.animations.add('charging', [3], 1,false);
       effect.animations.add('full', [2], 1,false);
     }

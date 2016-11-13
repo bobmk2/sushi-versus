@@ -51,6 +51,7 @@ function preload() {
   game.load.spritesheet('launching-effect', 'img/launching-effect.png', 32, 32);
   game.load.spritesheet('retry-button', 'img/retry-button.png', 240, 80);
   game.load.image('dish', 'img/dish.png', 32, 12);
+  game.load.image('arrow', 'img/arrow.png', 23, 12);
 }
 
 // socket.io
@@ -147,8 +148,6 @@ function update() {
   game.physics.arcade.overlap(player.image, massGroup, playerAndMassCollisionHandler, null, this);
 
   if (player.isRequiredEmit()) {
-    console.log('[EMIT]')
-    console.log(player.getEmitData());
     socket.emit(events.UPDATE_PLAYER_STATUS, player.getEmitData());
     player.emitted();
   }
@@ -210,13 +209,11 @@ function playerAndMassCollisionHandler(_player, _mass) {
     if (player.isInvincibility()) {
       // 無敵のときだけ触れている床の色を変える
       if (!player.isLaunching()) {
-        console.log('idx[0]]:'+idx[0]+' / [idx[1]: '+ idx[1])
         masses[idx[0]][idx[1]].changeTypeName(player.typeName);
         socket.emit(events.CHANGE_MASS_TYPENAME, [{x:idx[0],y:idx[1],typeName:player.typeName}]);
       }
     } else if (!player.isDead()){
       // 敵のマスにいるので死ぬ
-      console.log("[DIED]")
       player.die();
     }
   }
@@ -298,7 +295,7 @@ function emitDestroyedBullets() {
       return uuid;
     });
   if (uuids.length > 0) {
-    console.log('[DESTROY EMIT] => ', uuids);
+//    console.log('[DESTROY EMIT] => ', uuids);
     socket.emit(events.DESTROY_BULLETS, uuids);
   }
 }
@@ -458,8 +455,8 @@ function onKeyUp(event) {
       return;
     }
 
-    console.log("[SHOOT]");
-    console.log(bulletsData);
+//    console.log("[SHOOT]");
+//    console.log(bulletsData);
     const shootBullets = bulletsData.map(data => {
       let s = new Bullet({game, group: friendsBulletsGroup}, Uuid.v4(), data.typeName, data.x, data.y, data.moveX, data.moveY);
       s.shoot();
@@ -603,11 +600,17 @@ function onBulletsMoved(data) {
 }
 
 function onEnemyPopped(data) {
-  console.log('onEnemyPopped');
-  const enemy = Enemy.fromEmitData({game, group: enemyGroup}, data);
-  enemy.updateStatus(data);
-  enemies.push(enemy);
-  enemiesMapping[enemy.id] = enemy;
+  if (!Array.isArray(data)) {
+    data = [data];
+  }
+
+  data
+    .forEach(d => {
+      const enemy = Enemy.fromEmitData({game, group: enemyGroup}, d);
+      enemy.updateStatus(d);
+      enemies.push(enemy);
+      enemiesMapping[enemy.id] = enemy;
+    })
 }
 
 function onEnemyStatusUpdated(data) {

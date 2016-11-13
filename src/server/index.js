@@ -194,6 +194,11 @@ function onDisconnect(broadcast, connectionId) {
   delete playersMapping[connectionId];
   broadcast.emit(events.REMOVE_PLAYER, {id: connectionId});
   broadcast.emit(events.DESTROY_BULLETS, desBullets);
+
+  if (players.length === 0) {
+    enemies = [];
+    enemiesMapping = {};
+  }
 }
 
 function onNewPlayer(data) {
@@ -219,14 +224,17 @@ function onNewPlayer(data) {
 
   // このプレイヤーに他のプレイヤーのことを伝える
   players.forEach(player => {
-    console.log(player.getEmitData())
     this.emit(events.NEW_PLAYER, player.getEmitData());
-
   });
 
   // このプレイヤーに既に存在する弾丸のことを伝える
   if (bullets.length > 0 ){
     this.emit(events.CREATE_BULLETS, bullets.map(bullet => bullet.toEmitData()));
+  }
+
+  // このプレイヤーに既に存在する敵のことを伝える
+  if (enemies.length > 0) {
+    this.emit(events.POP_ENEMY, enemies.map(enemy => enemy.getEmitData()));
   }
 
   players.push(newPlayer);
@@ -248,7 +256,6 @@ function onNewPlayer(data) {
 //}
 
 function onUpdatePlayerStatus(data) {
-  console.log('[UPDATE] ');
   dump(data);
 
   var updatePlayer = playersMapping[this.id];
@@ -438,18 +445,21 @@ function onUpdateEnemyStatus() {
   if (Object.keys(invasionMasses).length > 0) {
 
     // 変える必要が無いのなら送らない
-    var invations = Object.keys(invasionMasses).map(massIndex => {
+    var invasions = Object.keys(invasionMasses).map(massIndex => {
       const idx = massIndex.split('-').map(s => parseInt(s));
       if (masses[idx[1]][idx[0]].typeName === 'default') {
         return null;
       }
+
+      // ついでに更新しておく
+      masses[idx[1]][idx[0]].typeName = 'default';
       return {x: idx[1], y: idx[0], typeName: 'default'}
     })
       .filter(s => s !== null);
 
     Object.keys(clients).forEach(key => {
       const client = clients[key];
-      client.emit(events.CHANGE_MASS_TYPENAME, invations);
+      client.emit(events.CHANGE_MASS_TYPENAME, invasions);
     });
   }
 }

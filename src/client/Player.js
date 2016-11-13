@@ -13,6 +13,11 @@ class Player {
 
     this.bulletSpeed = 4;
 
+    const arrow = game.add.sprite(startX, startY - 45, 'arrow');
+    arrow.scale.set(2);
+    arrow.anchor.set(0.5);
+    this.arrow = arrow;
+
     this.image = game.add.sprite(startX, startY, typeName);
     this.image.visible = false;
 
@@ -265,6 +270,8 @@ class Player {
   }
 
   _updateLastPosition() {
+    this.arrow.x = this.image.x;
+    this.arrow.y = this.image.y - 45;
     this.bulletChamber.setPos(this.image.x, this.image.y);
 
     this.lastPosition = {x: this.image.x, y: this.image.y};
@@ -312,6 +319,8 @@ class Player {
 
     const tween = this.game.add.tween(effect.scale).to({x:5, y:5}, 2000, Phaser.Easing.Exponential.Out, true, 0, 0, false);
     this.game.add.tween(effect).to({alpha:0}, 2000, Phaser.Easing.Exponential.Out, true, 0, 0, false);
+
+    this.arrow.kill();
 
     this.image.visible = false;
     const image = this.image;
