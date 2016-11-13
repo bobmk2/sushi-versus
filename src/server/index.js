@@ -194,8 +194,8 @@ function onNewPlayer(data) {
 //}
 
 function onUpdatePlayerStatus(data) {
-  //console.log('[UPDATE] ');
-  //dump(data);
+  console.log('[UPDATE] ');
+  dump(data);
 
   var updatePlayer = playersMapping[this.id];
   if (typeof updatePlayer === 'undefined') {
@@ -204,6 +204,8 @@ function onUpdatePlayerStatus(data) {
   }
   data.id = this.id;
   updatePlayer.updateStatus(data);
+
+  dump(data);
 
   // プレイヤーの移動を全体に伝える
   this.broadcast.emit(events.UPDATE_PLAYER_STATUS, data);
@@ -230,7 +232,7 @@ function onCreateBullets(data) {
 
 function onMoveBullets(data) {
   console.log('onMovedBullets');
-  dump(data);
+  //dump(data);
 
   var movedBullets = data.filter(d => bulletsMapping.hasOwnProperty(d.uuid));
   movedBullets.forEach(b => {
@@ -242,10 +244,56 @@ function onMoveBullets(data) {
 
     if ( (0 <= x && x <= 11) && (0 <= y && y <= 7)) {
       masses[y][x].typeName = bullet.typeName;
-//      masses[y][x].addBullet(bullet)
     }
   });
+
+  // 弾同士の当たり判定
+  // 長い目で見ると全体をソートしておいたほうが計算コストが安いはず
+  bullets.sort(compareBullet);
+  let maguroBullets = bullets.filter(bullet => bullet.typeName === 'maguro');
+  let tamagoBullets = bullets.filter(bullet => bullet.typeName === 'tamago');
+
+  let deletedBulletUuids = [];
+  for(let i=0;i<maguroBullets.length;i++){
+    let mB = maguroBullets[i];
+    for(let j=0;j<tamagoBullets.length;j++){
+      let tB = tamagoBullets[j];
+
+      // 近いときだけ計算　この時点で遠かったら以降の要素も遠いのでbreak
+      if (Math.abs(mB.x - tB.x) < 12) {
+        let length = Math.sqrt( Math.pow((tB.x - mB.x),2) + Math.pow((tB.y - mB.y), 2))
+        if (length < 16) {
+          console.log('LENGTH => ' + length);
+          // 相殺
+          deletedBulletUuids.push(mB.uuid);
+          deletedBulletUuids.push(tB.uuid);
+          console.log('TARGET =>', deletedBulletUuids);
+          break;
+        }
+      } else {
+        break;
+      }
+    }
+  }
+
+  if (deletedBulletUuids.length > 0) {
+    deletedBulletUuids.forEach(uuid => {
+      cleanBullet(uuid);
+    });
+    console.log(deletedBulletUuids);
+    this.broadcast.emit(events.DESTROY_BULLETS, deletedBulletUuids);
+  }
+
   this.broadcast.emit(events.MOVE_BULLETS, movedBullets);
+}
+
+function compareBullet(bulletA, bulletB) {
+  if (bulletA.x < bulletB.x) {
+    return -1;
+  } else if (bulletA.x > bulletB.x) {
+    return 1;
+  }
+  return 0;
 }
 
 function onDestroyBullets(data) {

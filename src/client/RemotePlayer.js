@@ -2,7 +2,7 @@ import {DIFF_X, DIFF_Y} from './BulletChamber';
 import Bullet from './Bullet';
 
 class RemotePlayer {
-  constructor(game, id, typeName, x, y, bulletRest) {
+  constructor(game, id, typeName, x, y, bulletRest, chargingPower) {
     this.playerId = id;
     this.game = game;
 
@@ -11,6 +11,7 @@ class RemotePlayer {
     this.image.name = this.playerId.toString();
     this.image.anchor.setTo(0.5, 0.5);
     this.bulletRest = bulletRest;
+    this.chargingPower = chargingPower;
 
     var bullets = [
       new Bullet({game}, null, typeName, x - DIFF_X, y + DIFF_Y),
@@ -30,6 +31,7 @@ class RemotePlayer {
     this.typeName = data.typeName;
     this.setPos(data.x, data.y);
     this.bulletRest = data.bulletChamber.rest;
+    this.chargingPower = data.chargingPower;
 
     // 弾丸の描画を修正
     if (this.bulletRest === 5) {
@@ -48,6 +50,13 @@ class RemotePlayer {
           bullet.empty();
         }
       });
+    }
+  }
+
+  update() {
+    this.image.angle += this.chargingPower;
+    if (this.chargingPower === 0) {
+      this.image.angle = 0;
     }
   }
 
@@ -78,7 +87,8 @@ class RemotePlayer {
       data.typeName,
       data.x,
       data.y,
-      data.bulletChamber.rest
+      data.bulletChamber.rest,
+      data.chargingPower
     )
   }
 }

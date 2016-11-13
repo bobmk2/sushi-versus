@@ -28,6 +28,8 @@ class Player {
     this._updateLastPosition();
 
     this._requiredEmit = false;
+
+    this.chargingPower = 0;
   }
 
   requiredEmit() {
@@ -64,15 +66,25 @@ class Player {
 
   update() {
     this.bulletChamber.update();
+
+    if (this.chargingDirection !== null) {
+      const last = this.chargingPower;
+      this.chargingPower = (Date.now() - this.chargingStart) / 50;
+      if (this.chargingPower > 30) {
+        this.chargingPower = 30;
+      }
+      this.image.angle += this.chargingPower;
+      if (last !== this.chargingPower) {
+        this.requiredEmit();
+      }
+    }
   }
 
   shoot() {
     if (this.bulletChamber.getRest() === 0 || this.chargingDirection === null) {
       return null;
     }
-    const now = Date.now();
-
-    this.bulletChamber.shoot(); // 残弾を減らす
+    const chargingTime = Date.now() - this.chargingStart;
 
     var move = null;
     switch(this.chargingDirection) {
@@ -90,12 +102,42 @@ class Player {
         break;
     }
 
+    let shotBullets = [];
+    if (chargingTime > 1500) {
+      // 弾を3発打つ
+      this.bulletChamber.shoot();
+      this.bulletChamber.shoot();
+      this.bulletChamber.shoot();
+
+      // 上下なら左右に広がる / 左右なら上下に広がる
+      switch(this.chargingDirection) {
+        case 'up':
+        case 'down':
+          shotBullets.push({typeName: this.typeName, x: this.image.x - 80, y: this.image.y, moveX: move.x, moveY: move.y});
+          shotBullets.push({typeName: this.typeName, x: this.image.x, y: this.image.y, moveX: move.x, moveY: move.y});
+          shotBullets.push({typeName: this.typeName, x: this.image.x + 80, y: this.image.y, moveX: move.x, moveY: move.y});
+          break;
+        case 'left':
+        case 'right':
+          shotBullets.push({typeName: this.typeName, x: this.image.x, y: this.image.y - 80, moveX: move.x, moveY: move.y});
+          shotBullets.push({typeName: this.typeName, x: this.image.x, y: this.image.y, moveX: move.x, moveY: move.y});
+          shotBullets.push({typeName: this.typeName, x: this.image.x, y: this.image.y + 80, moveX: move.x, moveY: move.y});
+          break;
+      }
+
+    } else {
+      this.bulletChamber.shoot(); // 残弾を減らす
+      shotBullets.push({typeName: this.typeName, x: this.image.x, y: this.image.y, moveX: move.x, moveY: move.y});
+    }
+
+    this.image.angle = 0;
     this.chargingDirection = null;
     this.chargingStart = -1;
+    this.chargingPower = 0;
 
     this.requiredEmit();
 
-    return {typeName: this.typeName, x: this.image.x, y: this.image.y, moveX: move.x, moveY: move.y};
+    return shotBullets;
   }
 
   charging({up, down, left, right}) {
@@ -144,7 +186,8 @@ class Player {
       typeName: this.typeName,
       x: this.image.x,
       y: this.image.y,
-      bulletChamber: this.bulletChamber.getEmitData()
+      bulletChamber: this.bulletChamber.getEmitData(),
+      chargingPower: this.chargingPower
     }
   }
 }

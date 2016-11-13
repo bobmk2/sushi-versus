@@ -120,6 +120,7 @@ function update() {
   game.physics.arcade.overlap(player.image, enemyBulletsGroup, playerAndBulletCollisionHandler, null, this);
   game.physics.arcade.overlap(friendsBulletsGroup, massGroup, bulletAndMassCollisionHandler, null, this);
   game.physics.arcade.overlap(enemyBulletsGroup, massGroup, bulletAndMassCollisionHandler, null, this);
+  game.physics.arcade.overlap(friendsBulletsGroup, enemyBulletsGroup, bulletsCollisionHandler, null, this);
 
   if (player.isRequiredEmit()) {
     console.log('[EMIT]')
@@ -146,8 +147,17 @@ function bulletAndMassCollisionHandler(bullet, mass) {
   masses[idx[0]][idx[1]].changeTypeName(collisionBullet.typeName);
 }
 
+function bulletsCollisionHandler(fBullet, eBullet) {
+  if (bulletsMapping.hasOwnProperty(fBullet.name)) {
+    bulletsMapping[fBullet.name].destroy();
+  }
+  if (bulletsMapping.hasOwnProperty(eBullet.name)) {
+    bulletsMapping[eBullet.name].destroy();
+  }
+}
+
 function updateAnotherPlayers(){
-  anotherPlayers.filter(player => player.alive).forEach(player => {
+  anotherPlayers.filter(player => player.image.alive).forEach(player => {
     player.update();
   });
 }
@@ -302,7 +312,6 @@ function onKeyboardInput() {
 function detectMass(x, y) {
   const _x = Math.floor(x / 80);
   const _y = Math.floor(y / 80);
-  console.log('_x:'+_x+ '/ _y:'+_y)
   return masses[_y][_x];
 }
 
@@ -318,17 +327,23 @@ function onKeyUp(event) {
     return;
   }
 
-  const bulletData = player.shoot({left, right, up, down});
-  if (bulletData === null) {
+  const bulletsData = player.shoot({left, right, up, down});
+  if (bulletsData === null || bulletsData.length === 0) {
     return;
   }
-  const bullet = new Bullet({game, group: friendsBulletsGroup}, Uuid.v4(), bulletData.typeName, bulletData.x, bulletData.y, bulletData.moveX, bulletData.moveY);
-  bullet.shoot();
-  myBullets.push(bullet);
-  bullets.push(bullet);
-  bulletsMapping[bullet.uuid] = bullet;
 
-  socket.emit(events.CREATE_BULLETS, bullet.getEmitData());
+  console.log("[SHOOT]")
+  console.log(bulletsData)
+  const shootBullets = bulletsData.map(data => {
+    let s = new Bullet({game, group: friendsBulletsGroup}, Uuid.v4(), data.typeName, data.x, data.y, data.moveX, data.moveY);
+    s.shoot();
+    myBullets.push(s);
+    bullets.push(s);
+    bulletsMapping[s.uuid] = s;
+    return s;
+  });
+
+  socket.emit(events.CREATE_BULLETS, shootBullets.map(b => b.getEmitData()));
 }
 
 
@@ -445,33 +460,35 @@ function onBulletsMoved(data) {
     .filter(d => bulletsMapping.hasOwnProperty(d.uuid))
     .forEach(d => {
       let bullet = bulletsMapping[d.uuid];
-      bullet.setPos(d.x, d.y);
+      if (!bullet.isDestroyed()) {
+        bullet.setPos(d.x, d.y);
 
-      let mass = detectMass(d.x, d.y);
-      if (typeof mass !== 'undefined') {
-        mass.changeTypeName(bullet.typeName);
+        let mass = detectMass(d.x, d.y);
+        if (typeof mass !== 'undefined') {
+          mass.changeTypeName(bullet.typeName);
+        }
       }
     });
 
-  console.log("CURRENT BULLES => ", bullets);
+  //console.log("CURRENT BULLES => ", bullets);
 }
 
 function cleanBullet(uuid) {
   let destroyBullet = bulletsMapping[uuid];
+  destroyBullet.kill();
+
   bullets.splice(bullets.indexOf(destroyBullet), 1);
 
   if (myBullets.indexOf(destroyBullet) !== -1) {
     myBullets.splice(myBullets.indexOf(destroyBullet), 1);
   }
   delete bulletsMapping[uuid];
-  destroyBullet.kill();
 }
 
 function onInitialMasses(data) {
   let line = 0;
   let vertical = 0;
   for(let i=0;i<data.length;i++) {
-    console.log(`[${line}][${vertical}]`)
     var mass = masses[line][vertical];
 
     switch(data.charAt(i)) {

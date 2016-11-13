@@ -10,7 +10,7 @@ class ServerBullet {
     this.typeName = typeName;
     this.status = status;
 
-    this.destroy = false;
+    this._destroy = false;
   }
 
   static fromEmitData(playerId, data) {
@@ -34,7 +34,10 @@ class ServerBullet {
   }
 
   destroy() {
-    this.destroy = true;
+    this._destroy = true;
+  }
+  isDestroy() {
+    return this._destroy;
   }
 }
 

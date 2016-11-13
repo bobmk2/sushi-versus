@@ -1,10 +1,11 @@
 class Player {
-  constructor({id, typeName, x, y, bulletChamber}) {
+  constructor({id, typeName, x, y, bulletChamber, chargingPower}) {
     this._playerId = id;
     this._x = x;
     this._y = y;
     this._typeName = typeName;
     this._bulletChamber = bulletChamber;
+    this._chargingPower = chargingPower;
   }
 
   getPlayerId() {
@@ -27,6 +28,7 @@ class Player {
     this._typeName = data.typeName;
     this.setPos(data.x, data.y);
     this._bulletChamber = data.bulletChamber;
+    this._chargingPower = data.chargingPower;
   }
 
   getEmitData() {
@@ -35,7 +37,8 @@ class Player {
       typeName: this._typeName,
       x: this._x,
       y: this._y,
-      bulletChamber: this._bulletChamber
+      bulletChamber: this._bulletChamber,
+      chargingPower: this._chargingPower
     }
   }
 }

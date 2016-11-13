@@ -2,6 +2,7 @@ class Bullet {
 
   constructor({game, group}, uuid, typeName, x, y, moveX = 0, moveY = 0) {
     this.game = game;
+    this.group = group;
     this.uuid = uuid;
     this.typeName = typeName;
     this._x = x;
@@ -131,6 +132,11 @@ class Bullet {
 
   kill() {
     console.log("BULLET KILL")
+
+    if (typeof this.group !== 'undefined') {
+      this.group.remove(this.image);
+    }
+
     this.image.kill();
   }
 }
