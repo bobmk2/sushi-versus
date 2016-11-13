@@ -20,6 +20,12 @@ class Player {
     this.image.smoothed = false;
     game.physics.arcade.enable(this.image);
 
+    this.chargeEffect = game.add.image(startX, startY, typeName);
+    this.chargeEffect.anchor.setTo(0.5,0.5);
+    this.chargeEffect.scale.set(3.5);
+    this.chargeEffect.alpha = 0.3;
+    this.chargeEffect.visible = false;
+
     this.bulletChamber = new BulletChamber(this.game, this, typeName, this.image.x, this.image.y);
 
     this.chargingDirection = null;
@@ -65,18 +71,27 @@ class Player {
   }
 
   update() {
-    this.bulletChamber.update();
-
     if (this.chargingDirection !== null) {
       const last = this.chargingPower;
       this.chargingPower = (Date.now() - this.chargingStart) / 50;
+
       if (this.chargingPower > 30) {
         this.chargingPower = 30;
+
+        this.chargeEffect.visible = true;
+
+        this.chargeEffect.x = this.image.x;
+        this.chargeEffect.y = this.image.y;
       }
       this.image.angle += this.chargingPower;
+      this.chargeEffect.angle = this.image.angle;
+
       if (last !== this.chargingPower) {
         this.requiredEmit();
       }
+    } else {
+      // チャージ中は回復しない
+      this.bulletChamber.update();
     }
   }
 
@@ -104,9 +119,7 @@ class Player {
 
     let shotBullets = [];
     if (chargingTime > 1500) {
-      // 弾を3発打つ
-      this.bulletChamber.shoot();
-      this.bulletChamber.shoot();
+      // 1発の消費で弾を3発打つ
       this.bulletChamber.shoot();
 
       // 上下なら左右に広がる / 左右なら上下に広がる
@@ -134,6 +147,9 @@ class Player {
     this.chargingDirection = null;
     this.chargingStart = -1;
     this.chargingPower = 0;
+
+    this.chargeEffect.visible = false;
+    this.chargeEffect.angle = 0;
 
     this.requiredEmit();
 

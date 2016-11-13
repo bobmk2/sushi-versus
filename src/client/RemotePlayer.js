@@ -10,6 +10,13 @@ class RemotePlayer {
     this.image.scale.set(2);
     this.image.name = this.playerId.toString();
     this.image.anchor.setTo(0.5, 0.5);
+
+    this.chargeEffect = game.add.image(x, y, typeName);
+    this.chargeEffect.anchor.setTo(0.5,0.5);
+    this.chargeEffect.scale.set(3.5);
+    this.chargeEffect.alpha = 0.3;
+    this.chargeEffect.visible = false;
+
     this.bulletRest = bulletRest;
     this.chargingPower = chargingPower;
 
@@ -57,6 +64,10 @@ class RemotePlayer {
     this.image.angle += this.chargingPower;
     if (this.chargingPower === 0) {
       this.image.angle = 0;
+      this.chargeEffect.visible = false;
+    } else if (this.chargingPower >= 30) {
+      this.chargeEffect.visible = true;
+      this.chargeEffect.angle = this.image.angle;
     }
   }
 
