@@ -42,8 +42,6 @@ class RemotePlayer {
   }
 
   updateStatus(data) {
-    console.log('UPDATE');
-    console.log(data);
     this.typeName = data.typeName;
     this.setPos(data.x, data.y);
     this.bulletRest = data.bulletChamber.rest;

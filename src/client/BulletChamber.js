@@ -79,6 +79,13 @@ class BulletChamber {
     this.rest = this.bullets.filter(bullet => bullet.isFull()).length;
   }
 
+  burst() {
+    this.bullets.forEach(bullet => {
+      bullet.startBurstEffect();
+      bullet.kill();
+    })
+  }
+
 
   getEmitData() {
     return {

@@ -45,6 +45,8 @@ function preload() {
   game.load.image('dead-maguro', 'img/dead-maguro.png', 32, 32);
   game.load.spritesheet('ikura', 'img/ikura.png', 16, 16);
   game.load.spritesheet('mass', 'img/mass.png', 40, 40);
+  game.load.image('overlay', 'img/overlay.png', 32, 32);
+  game.load.spritesheet('retry-button', 'img/retry-button.png', 240, 80);
 }
 
 // socket.io
@@ -64,6 +66,8 @@ var masses = null;
 var friendsBulletsGroup;
 var enemyBulletsGroup;
 var massGroup;
+
+var scoreText;
 
 function create() {
   game.stage.disableVisibilityChange = true;
@@ -108,24 +112,24 @@ function create() {
 
   game.input.keyboard.onUpCallback = onKeyUp;
 
+  scoreText = game.add.text(820, 600, `SCORE:${score}`, {font:'20px Arial', fill:'#FFFFFF', align:'left'})
+
   setSocketEventHandlers(socket);
 }
 
+var lastScore = 0;
 function update() {
   onKeyboardInput();
   updateAnotherPlayers();
   updateBullets();
   player.update();
 
-  if (player.isInvincibility()) {
-    // 無敵のときだけ触れている床の色を変える
-    // ただ結局移動制限かかって移動できない
-    game.physics.arcade.overlap(player.image, massGroup, playerAndMassCollisionHandler, null, this);
-  }
   game.physics.arcade.overlap(player.image, enemyBulletsGroup, playerAndBulletCollisionHandler, null, this);
   game.physics.arcade.overlap(friendsBulletsGroup, massGroup, bulletAndMassCollisionHandler, null, this);
   game.physics.arcade.overlap(enemyBulletsGroup, massGroup, bulletAndMassCollisionHandler, null, this);
   game.physics.arcade.overlap(friendsBulletsGroup, enemyBulletsGroup, bulletsCollisionHandler, null, this);
+
+  game.physics.arcade.overlap(player.image, massGroup, playerAndMassCollisionHandler, null, this);
 
   if (player.isRequiredEmit()) {
     console.log('[EMIT]')
@@ -135,20 +139,76 @@ function update() {
   }
 
   emitDestroyedBullets();
+
+  if (lastScore !== score) {
+    scoreText.text = `SCORE:${score}`
+    lastScore = score;
+  }
+  endRoll();
+}
+
+function getScore() {return score;}
+
+var raunchedEndRoll = false;
+var score = 0;
+function endRoll() {
+  if (!player.isDead() || raunchedEndRoll) {
+    return;
+  }
+  if (!player.image.alive) {
+    raunchedEndRoll = true;
+
+    const overlay = game.add.sprite(0, 0, 'overlay');
+    overlay.scale.setTo(30, 20);
+    overlay.alpha = 0;
+
+    const tween = game.add.tween(overlay).to({alpha:1}, 1000, Phaser.Easing.Linear.None, true, 0, 0, false);
+    tween.onComplete.add(() => {
+      game.add.text(320, 160, 'Game Over', {font:'60px Arial', fill:'#FFFFFF', align:'left'})
+      game.add.text(310, 230, 'Thank you for playing :)', {font:'32px Arial', fill:'#FFFFFF', align:'left'})
+
+      const sushi = game.add.sprite(480, 330, player.typeName);
+      sushi.scale.set(3);
+      sushi.anchor.set(0.5);
+      game.add.tween(sushi).to({angle:360}, 250, Phaser.Easing.Linear.None, true, 0, 0, false).loop(true);
+      const sushiEffect = game.add.sprite(sushi.x, sushi.y, player.typeName);
+      sushiEffect.scale.set(4);
+      sushiEffect.anchor.set(0.5);
+      sushiEffect.alpha = 0.5
+      game.add.tween(sushiEffect).to({angle:360}, 250, Phaser.Easing.Linear.None, true, 0, 0, false).loop(true);
+
+      const retryButton = game.add.button(game.world.centerX - 120, 500, 'retry-button', actionOnClick, this, 1, 0, 2);
+
+      game.add.text(350, 400, `SCORE: ${score}`, {font:'40px Arial', fill:'#FFFFFF', align:'left'})
+    });
+  }
+}
+
+function actionOnClick() {
+  location.reload(true);
 }
 
 function playerAndMassCollisionHandler(_player, _mass) {
   const idx = _mass.name.split('-').map(s => parseInt(s));
   const mass = masses[idx[0]][idx[1]];
   const current = mass.typeName;
+
   if (current !== player.typeName) {
-    masses[idx[0]][idx[1]].changeTypeName(player.typeName);
-    socket.emit(events.CHANGE_MASS_TYPENAME, [{x:idx[0],y:idx[1],typeName:player.typeName}]);
+    if (player.isInvincibility()) {
+      // 無敵のときだけ触れている床の色を変える
+      // ただ結局移動制限かかって移動できない
+      masses[idx[0]][idx[1]].changeTypeName(player.typeName);
+      socket.emit(events.CHANGE_MASS_TYPENAME, [{x:idx[0],y:idx[1],typeName:player.typeName}]);
+    } else if (!player.isDead()){
+      // 敵のマスにいるので死ぬ
+      console.log("[DIED]")
+      player.die();
+    }
   }
 }
 
-function playerAndBulletCollisionHandler(player, bullet) {
-  console.log("[DEAD]", bullet.name);
+function playerAndBulletCollisionHandler(_player, bullet) {
+  // ここは弾だけ消せばOK
   bulletsMapping[bullet.name].destroy();
 }
 
@@ -159,7 +219,13 @@ function bulletAndMassCollisionHandler(bullet, mass) {
   }
 
   const idx = mass.name.split('-').map(s => parseInt(s));
-  masses[idx[0]][idx[1]].changeTypeName(collisionBullet.typeName);
+  const m = masses[idx[0]][idx[1]];
+  if (m.typeName !== collisionBullet.typeName) {
+    m.changeTypeName(collisionBullet.typeName);
+    if (myBullets.indexOf(collisionBullet) !== -1) {
+      score ++;
+    }
+  }
 }
 
 function bulletsCollisionHandler(fBullet, eBullet) {
@@ -286,26 +352,33 @@ function onKeyboardInput() {
 
     // ぶつかるのならそちらの移動量を0にする
     if (movedX < 0) {
-      console.log('left > '+nextPos.left);
-      if (player.typeName !== detectMass(nextPos.left, top).typeName || player.typeName !== detectMass(nextPos.left, bottom).typeName) {
+      let l1 = detectMass(nextPos.left, top);
+      let l2 = detectMass(nextPos.left, bottom);
+      if ((l1 && player.typeName !== l1.typeName) || (l2 && player.typeName !== l2.typeName)) {
         // ぶつかっている
         movedX = 0;
       }
     }
     if (movedX > 0) {
-      if (player.typeName !== detectMass(nextPos.right, top).typeName || player.typeName !== detectMass(nextPos.right, bottom).typeName) {
+      let r1 = detectMass(nextPos.right, top)
+      let r2 = detectMass(nextPos.right, bottom)
+      if ((r1 && player.typeName !== r1.typeName) || (r2 && player.typeName !== r2.typeName)) {
         // ぶつかっている
         movedX = 0;
       }
     }
     if (movedY < 0) {
-      if (player.typeName !== detectMass(left, nextPos.top).typeName || player.typeName !== detectMass(right, nextPos.top).typeName) {
+      let t1 = detectMass(left, nextPos.top);
+      let t2 = detectMass(right, nextPos.top);
+      if ((t1 && player.typeName !== t1.typeName) || (t2 && player.typeName !== t2.typeName)) {
         // ぶつかっている
         movedY = 0;
       }
     }
     if (movedY > 0) {
-      if (player.typeName !== detectMass(left, nextPos.bottom).typeName || player.typeName !== detectMass(right, nextPos.bottom).typeName) {
+      let b1 = detectMass(left, nextPos.bottom);
+      let b2 = detectMass(right, nextPos.bottom);
+      if ((b1 && player.typeName !== b1.typeName) || (b2 && player.typeName !== b2.typeName)) {
         // ぶつかっている
         movedY = 0;
       }
@@ -325,6 +398,8 @@ function onKeyboardInput() {
 }
 
 function detectMass(x, y) {
+  if (x < 0 || x > 960 || y < 0 || y > 640) {return null;}
+
   const _x = Math.floor(x / 80);
   const _y = Math.floor(y / 80);
   return masses[_y][_x];
@@ -342,23 +417,25 @@ function onKeyUp(event) {
     return;
   }
 
-  const bulletsData = player.shoot({left, right, up, down});
-  if (bulletsData === null || bulletsData.length === 0) {
-    return;
+  if (!player.isDead()){
+    const bulletsData = player.shoot({left, right, up, down});
+    if (bulletsData === null || bulletsData.length === 0) {
+      return;
+    }
+
+    console.log("[SHOOT]");
+    console.log(bulletsData);
+    const shootBullets = bulletsData.map(data => {
+      let s = new Bullet({game, group: friendsBulletsGroup}, Uuid.v4(), data.typeName, data.x, data.y, data.moveX, data.moveY);
+      s.shoot();
+      myBullets.push(s);
+      bullets.push(s);
+      bulletsMapping[s.uuid] = s;
+      return s;
+    });
+
+    socket.emit(events.CREATE_BULLETS, shootBullets.map(b => b.getEmitData()));
   }
-
-  console.log("[SHOOT]");
-  console.log(bulletsData);
-  const shootBullets = bulletsData.map(data => {
-    let s = new Bullet({game, group: friendsBulletsGroup}, Uuid.v4(), data.typeName, data.x, data.y, data.moveX, data.moveY);
-    s.shoot();
-    myBullets.push(s);
-    bullets.push(s);
-    bulletsMapping[s.uuid] = s;
-    return s;
-  });
-
-  socket.emit(events.CREATE_BULLETS, shootBullets.map(b => b.getEmitData()));
 }
 
 
@@ -463,7 +540,8 @@ function onBulletsDestroyed(data) {
   data
     .filter(uuid => bulletsMapping.hasOwnProperty(uuid))
     .forEach(uuid => {
-      cleanBullet(uuid)
+      bulletsMapping[uuid].destroy();
+      //cleanBullet(uuid)
     });
 }
 
@@ -476,7 +554,7 @@ function onBulletsMoved(data) {
         bullet.setPos(d.x, d.y);
 
         let mass = detectMass(d.x, d.y);
-        if (typeof mass !== 'undefined') {
+        if (mass) {
           mass.changeTypeName(bullet.typeName);
         }
       }

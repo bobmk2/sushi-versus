@@ -41,6 +41,9 @@ class Player {
 
     this.invincibility = true;
     this.popTime = Date.now();
+
+    this.deadFlag = false;
+    this.isEnableEndroll = false;
   }
 
   isInvincibility() {
@@ -71,6 +74,10 @@ class Player {
   }
 
   move(x, y) {
+    if (this.isDead()) {
+      return;
+    }
+
     this.image.x += x;
     this.image.y += y;
 
@@ -106,7 +113,7 @@ class Player {
     }
 
     // 2秒間は無敵 + いる場所を自分の色に変える
-    if (this.invincibility && now - this.popTime >= 2000) {
+    if (this.invincibility && (now - this.popTime) >= 2000) {
       this.invincibility = false;
 
       this.image.alpha = 1.0;
@@ -117,6 +124,10 @@ class Player {
   }
 
   shoot() {
+    if (this.isDead()) {
+      return;
+    }
+
     if (this.bulletChamber.getRest() === 0 || this.chargingDirection === null) {
       return null;
     }
@@ -178,6 +189,10 @@ class Player {
   }
 
   charging({up, down, left, right}) {
+    if (this.isDead()) {
+      return;
+    }
+
     if ((!up && !down && !left && !right)
       || this.chargingDirection !== null
       || this.bulletChamber.getRest() === 0) {
@@ -198,6 +213,10 @@ class Player {
   }
 
   pos(x, y) {
+    if (this.isDead()) {
+      return;
+    }
+
     this.image.x = x;
     this.image.y = y;
 
@@ -226,9 +245,53 @@ class Player {
       y: this.image.y,
       bulletChamber: this.bulletChamber.getEmitData(),
       chargingPower: this.chargingPower,
-      invincibility: this.invincibility
+      invincibility: this.invincibility,
+      death: this.deadFlag
     }
   }
+
+  die() {
+    if (this.deadFlag) {
+      return;
+    }
+    this.deadFlag = true;
+
+    this.invincibility = false;
+    this.invincibilityTween.stop();
+
+    this.image.angle = 0;
+    this.chargingDirection = null;
+    this.chargingStart = -1;
+    this.chargingPower = 0;
+    this.chargeEffect.visible = false;
+    this.chargeEffect.angle = 0;
+
+    // 死亡エフェクト
+    const effect = this.game.add.sprite(this.image.x, this.image.y, this.typeName);
+    effect.scale.set(2);
+    effect.anchor.setTo(0.5, 0.5);
+    effect.smoothed = false;
+
+    const tween = this.game.add.tween(effect.scale).to({x:5, y:5}, 2000, Phaser.Easing.Exponential.Out, true, 0, 0, false);
+    this.game.add.tween(effect).to({alpha:0}, 2000, Phaser.Easing.Exponential.Out, true, 0, 0, false);
+
+    this.image.visible = false;
+    const image = this.image;
+    tween.onComplete.add(()=>{
+      image.kill();
+      effect.kill();
+    }, this);
+
+    // 弾も破裂させる
+    this.bulletChamber.burst();
+
+    this.requiredEmit();
+  }
+
+  isDead() {
+    return this.deadFlag;
+  }
+
 }
 
 export default Player;

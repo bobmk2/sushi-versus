@@ -53,8 +53,47 @@ class Bullet {
   }
 
   destroy() {
-    console.log("DESTORY FLAG ON => ", this.uuid);
+    if (this.destroyFlag) {
+      return;
+    }
     this.destroyFlag = true;
+    this.startBurstEffect();
+  }
+
+  startBurstEffect() {
+    const effect = this.game.add.sprite(this.image.x, this.image.y, 'ikura');
+    effect.scale.set(1);
+    effect.smoothed = false;
+    effect.anchor.setTo(0.5, 0.5);
+
+    effect.animations.add('empty', [4], 1,false);
+    if (this.typeName === 'tamago') {
+      console.log("TAMAGO")
+      effect.animations.add('charging', [1], 1,false);
+      effect.animations.add('full', [0], 1,false);
+    } else if (this.typeName === 'maguro') {
+      console.log("MAGURO")
+      effect.animations.add('charging', [3], 1,false);
+      effect.animations.add('full', [2], 1,false);
+    }
+    switch(this.status) {
+      case 0:
+        effect.animations.play('empty');
+        break;
+      case 1:
+        effect.animations.play('charging');
+        break;
+      case 2:
+        effect.animations.play('full');
+        break;
+    }
+
+    const tween = this.game.add.tween(effect.scale).to({x:3, y:3}, 1000, Phaser.Easing.Exponential.Out, true, 0, 0, false);
+    this.game.add.tween(effect).to({alpha:0}, 1000, Phaser.Easing.Exponential.Out, true, 0, 0, false);
+
+    tween.onComplete.add(() => {
+      effect.kill();
+    }, this);
   }
 
   // 範囲外に出たら削除する
@@ -131,8 +170,6 @@ class Bullet {
   }
 
   kill() {
-    console.log("BULLET KILL")
-
     if (typeof this.group !== 'undefined') {
       this.group.remove(this.image);
     }
