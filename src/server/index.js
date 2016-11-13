@@ -112,6 +112,7 @@ function onSocketConnection(client) {
   client.on(events.CREATE_BULLETS, onCreateBullets);
   client.on(events.MOVE_BULLETS, onMoveBullets);
   client.on(events.DESTROY_BULLETS, onDestroyBullets);
+  client.on(events.CHANGE_MASS_TYPENAME, onChangeMassTypeName);
   //client.on(events.MOVE_PLAYER, onMovePlayer);
   //client.on('show hmm', onShowHmm);
   //client.on('hide hmm', onHideHmm);
@@ -167,7 +168,10 @@ function onNewPlayer(data) {
 
   // このプレイヤーに他のプレイヤーのことを伝える
   players.forEach(player => {
-    this.emit(events.NEW_PLAYER, player.getEmitData())
+    console.log("NOTICE")
+    console.log(player.getEmitData())
+    this.emit(events.NEW_PLAYER, player.getEmitData());
+
   });
 
   // このプレイヤーに既に存在する弾丸のことを伝える
@@ -316,6 +320,13 @@ function onDestroyBullets(data) {
   if (uuids.length > 0) {
     this.broadcast.emit(events.DESTROY_BULLETS, uuids);
   }
+}
+
+function onChangeMassTypeName(data) {
+  data.forEach(d => {
+    masses[d.x][d.y].typeName = d.typeName;
+  })
+  this.broadcast.emit(events.CHANGE_MASS_TYPENAME, data);
 }
 
 function cleanBullet(uuid) {

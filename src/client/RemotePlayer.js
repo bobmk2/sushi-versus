@@ -2,7 +2,7 @@ import {DIFF_X, DIFF_Y} from './BulletChamber';
 import Bullet from './Bullet';
 
 class RemotePlayer {
-  constructor(game, id, typeName, x, y, bulletRest, chargingPower) {
+  constructor(game, id, typeName, x, y, bulletRest, chargingPower, invincibility) {
     this.playerId = id;
     this.game = game;
 
@@ -16,6 +16,15 @@ class RemotePlayer {
     this.chargeEffect.scale.set(3.5);
     this.chargeEffect.alpha = 0.3;
     this.chargeEffect.visible = false;
+    this.invincibility = invincibility;
+
+    this.invincibilityTween = game.add.tween(this.image).to({alpha:0.1}, 200, Phaser.Easing.Linear.None, true, 0, 0, true).loop(true);
+    if (this.invincibility) {
+      this.invincibilityTween.start();
+    } else {
+      this.image.alpha = 1.0;
+      this.invincibilityTween.stop();
+    }
 
     this.bulletRest = bulletRest;
     this.chargingPower = chargingPower;
@@ -39,6 +48,14 @@ class RemotePlayer {
     this.setPos(data.x, data.y);
     this.bulletRest = data.bulletChamber.rest;
     this.chargingPower = data.chargingPower;
+
+    if (!this.invincibility && data.invincibility) {
+      this.invincibilityTween.start();
+    } else if (this.invincibility && !data.invincibility){
+      this.image.alpha = 1.0;
+      this.invincibilityTween.stop();
+    }
+    this.invincibility = data.invincibility;
 
     // 弾丸の描画を修正
     if (this.bulletRest === 5) {
@@ -68,6 +85,8 @@ class RemotePlayer {
     } else if (this.chargingPower >= 30) {
       this.chargeEffect.visible = true;
       this.chargeEffect.angle = this.image.angle;
+      this.chargeEffect.x = this.image.x;
+      this.chargeEffect.y = this.image.y;
     }
   }
 
@@ -89,6 +108,7 @@ class RemotePlayer {
   remove() {
     this.image.kill();
     this.bullets.forEach(bullet => bullet.kill());
+    this.chargeEffect.kill();
   }
 
   static fromEmitData(game, data) {
@@ -99,8 +119,9 @@ class RemotePlayer {
       data.x,
       data.y,
       data.bulletChamber.rest,
-      data.chargingPower
-    )
+      data.chargingPower,
+      data.invincibility
+  )
   }
 }
 

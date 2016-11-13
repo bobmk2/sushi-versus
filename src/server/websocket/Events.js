@@ -8,6 +8,7 @@ const CREATE_BULLETS = 'create-bullets';
 const MOVE_BULLETS = 'move-bullets';
 const UPDATE_PLAYER_STATUS = 'update-player-status';
 const DESTROY_BULLETS = 'destory-bullets';
+const CHANGE_MASS_TYPENAME = 'change-mass-typename';
 
 export default {
   CONNECT,
@@ -18,5 +19,6 @@ export default {
   INITIAL_MASSES,
   UPDATE_PLAYER_STATUS,
   CREATE_BULLETS,
-  DESTROY_BULLETS
+  DESTROY_BULLETS,
+  CHANGE_MASS_TYPENAME
 }

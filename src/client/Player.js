@@ -20,6 +20,8 @@ class Player {
     this.image.smoothed = false;
     game.physics.arcade.enable(this.image);
 
+    this.invincibilityTween = game.add.tween(this.image).to({alpha:0.1}, 200, Phaser.Easing.Linear.None, true, 0, 0, true).loop(true);
+
     this.chargeEffect = game.add.image(startX, startY, typeName);
     this.chargeEffect.anchor.setTo(0.5,0.5);
     this.chargeEffect.scale.set(3.5);
@@ -36,6 +38,13 @@ class Player {
     this._requiredEmit = false;
 
     this.chargingPower = 0;
+
+    this.invincibility = true;
+    this.popTime = Date.now();
+  }
+
+  isInvincibility() {
+    return this.invincibility;
   }
 
   requiredEmit() {
@@ -71,9 +80,11 @@ class Player {
   }
 
   update() {
+    const now = Date.now();
+
     if (this.chargingDirection !== null) {
       const last = this.chargingPower;
-      this.chargingPower = (Date.now() - this.chargingStart) / 50;
+      this.chargingPower = (now - this.chargingStart) / 50;
 
       if (this.chargingPower > 30) {
         this.chargingPower = 30;
@@ -92,6 +103,16 @@ class Player {
     } else {
       // チャージ中は回復しない
       this.bulletChamber.update();
+    }
+
+    // 2秒間は無敵 + いる場所を自分の色に変える
+    if (this.invincibility && now - this.popTime >= 2000) {
+      this.invincibility = false;
+
+      this.image.alpha = 1.0;
+      this.invincibilityTween.stop();
+
+      this.requiredEmit();
     }
   }
 
@@ -195,6 +216,7 @@ class Player {
 
   remove() {
     this.image.kill();
+    this.chargeEffect.kill();
   }
 
   getEmitData() {
@@ -203,7 +225,8 @@ class Player {
       x: this.image.x,
       y: this.image.y,
       bulletChamber: this.bulletChamber.getEmitData(),
-      chargingPower: this.chargingPower
+      chargingPower: this.chargingPower,
+      invincibility: this.invincibility
     }
   }
 }

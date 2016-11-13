@@ -59,7 +59,7 @@ var bullets;
 var bulletsMapping;
 var myBullets;
 
-var masses;
+var masses = null;
 
 var friendsBulletsGroup;
 var enemyBulletsGroup;
@@ -117,6 +117,11 @@ function update() {
   updateBullets();
   player.update();
 
+  if (player.isInvincibility()) {
+    // 無敵のときだけ触れている床の色を変える
+    // ただ結局移動制限かかって移動できない
+    game.physics.arcade.overlap(player.image, massGroup, playerAndMassCollisionHandler, null, this);
+  }
   game.physics.arcade.overlap(player.image, enemyBulletsGroup, playerAndBulletCollisionHandler, null, this);
   game.physics.arcade.overlap(friendsBulletsGroup, massGroup, bulletAndMassCollisionHandler, null, this);
   game.physics.arcade.overlap(enemyBulletsGroup, massGroup, bulletAndMassCollisionHandler, null, this);
@@ -132,8 +137,18 @@ function update() {
   emitDestroyedBullets();
 }
 
+function playerAndMassCollisionHandler(_player, _mass) {
+  const idx = _mass.name.split('-').map(s => parseInt(s));
+  const mass = masses[idx[0]][idx[1]];
+  const current = mass.typeName;
+  if (current !== player.typeName) {
+    masses[idx[0]][idx[1]].changeTypeName(player.typeName);
+    socket.emit(events.CHANGE_MASS_TYPENAME, [{x:idx[0],y:idx[1],typeName:player.typeName}]);
+  }
+}
+
 function playerAndBulletCollisionHandler(player, bullet) {
-  console.log("COLLISION: ", bullet.name);
+  console.log("[DEAD]", bullet.name);
   bulletsMapping[bullet.name].destroy();
 }
 
@@ -332,8 +347,8 @@ function onKeyUp(event) {
     return;
   }
 
-  console.log("[SHOOT]")
-  console.log(bulletsData)
+  console.log("[SHOOT]");
+  console.log(bulletsData);
   const shootBullets = bulletsData.map(data => {
     let s = new Bullet({game, group: friendsBulletsGroup}, Uuid.v4(), data.typeName, data.x, data.y, data.moveX, data.moveY);
     s.shoot();
@@ -363,10 +378,7 @@ function setSocketEventHandlers(socket) {
   socket.on(events.DESTROY_BULLETS, onBulletsDestroyed);
   socket.on(events.MOVE_BULLETS, onBulletsMoved);
   socket.on(events.INITIAL_MASSES, onInitialMasses);
-  socket.on('start-game', onGameStarted);
-  socket.on('finish-game', onGameFinished);
-  socket.on('start-result', onResultStarted);
-  socket.on('finish-result', onResultFinished);
+  socket.on(events.CHANGE_MASS_TYPENAME, onMassTypeNameChanged);
 }
 
 function onSocketConnected() {
@@ -509,6 +521,15 @@ function onInitialMasses(data) {
       vertical = 0;
     }
   }
+}
+
+function onMassTypeNameChanged(data) {
+  if (masses === null) {
+    return;
+  }
+  data.forEach(d => {
+    masses[d.x][d.y].changeTypeName(d.typeName);
+  })
 }
 
 function onGameStarted(data) {
