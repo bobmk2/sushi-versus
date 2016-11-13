@@ -25,6 +25,12 @@ class BulletChamber {
     return this.rest;
   }
 
+  setVisible(visible) {
+    this.bullets.forEach(bullet => {
+      bullet.image.visible = visible;
+    })
+  }
+
   setPos(x, y) {
 
     this.bullets.forEach((bullet, index) => {

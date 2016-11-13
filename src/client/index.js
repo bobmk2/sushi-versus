@@ -6,6 +6,7 @@ import Player from './Player';
 import RemotePlayer from './RemotePlayer';
 import Bullet from './Bullet';
 import Mass from './Mass';
+import Enemy from './Enemy';
 
 import events from '../server/websocket/Events';
 import Uuid from 'node-uuid';
@@ -38,7 +39,7 @@ fetch('/api/players.json')
 
 
 function preload() {
-  game.stage.disableVisibilityChange = true
+  game.stage.disableVisibilityChange = true;
 
   game.load.image('tamago', 'img/tamago.png', 32, 21);
   game.load.image('maguro', 'img/maguro.png', 32, 21);
@@ -47,7 +48,9 @@ function preload() {
   game.load.spritesheet('ikura', 'img/ikura.png', 16, 16);
   game.load.spritesheet('mass', 'img/mass.png', 40, 40);
   game.load.image('overlay', 'img/overlay.png', 32, 32);
+  game.load.spritesheet('launching-effect', 'img/launching-effect.png', 32, 32);
   game.load.spritesheet('retry-button', 'img/retry-button.png', 240, 80);
+  game.load.image('dish', 'img/dish.png', 32, 12);
 }
 
 // socket.io
@@ -68,6 +71,10 @@ var friendsBulletsGroup;
 var enemyBulletsGroup;
 var massGroup;
 
+var enemyGroup;
+var enemies;
+var enemiesMapping;
+
 var scoreText;
 
 function create() {
@@ -78,6 +85,8 @@ function create() {
 
   anotherPlayers = [];
   playerMapping = {};
+  enemies = [];
+  enemiesMapping = {};
 
   // 自分のだけ同期させるため別の入れ物を容易
   myBullets = [];
@@ -87,6 +96,10 @@ function create() {
   massGroup = game.add.physicsGroup();
   massGroup.enableBody = true;
   massGroup.physicsBodyType = Phaser.Physics.ARCADE;
+
+  enemyGroup = game.add.physicsGroup();
+  enemyGroup.enableBody = true;
+  enemyGroup.physicsBodyType = Phaser.Physics.ARCADE;
 
   // 12 * 8
   masses = [];
@@ -129,6 +142,7 @@ function update() {
   game.physics.arcade.overlap(friendsBulletsGroup, massGroup, bulletAndMassCollisionHandler, null, this);
   game.physics.arcade.overlap(enemyBulletsGroup, massGroup, bulletAndMassCollisionHandler, null, this);
   game.physics.arcade.overlap(friendsBulletsGroup, enemyBulletsGroup, bulletsCollisionHandler, null, this);
+  game.physics.arcade.overlap(friendsBulletsGroup, enemyGroup, bulletAndEnemyCollisionHandler, null, this);
 
   game.physics.arcade.overlap(player.image, massGroup, playerAndMassCollisionHandler, null, this);
 
@@ -148,16 +162,14 @@ function update() {
   endRoll();
 }
 
-function getScore() {return score;}
-
-var raunchedEndRoll = false;
+var launchedEndRoll = false;
 var score = 0;
 function endRoll() {
-  if (!player.isDead() || raunchedEndRoll) {
+  if (!player.isDead() || launchedEndRoll) {
     return;
   }
   if (!player.image.alive) {
-    raunchedEndRoll = true;
+    launchedEndRoll = true;
 
     const overlay = game.add.image(0, 0, 'overlay');
     overlay.scale.setTo(30, 20);
@@ -197,15 +209,37 @@ function playerAndMassCollisionHandler(_player, _mass) {
   if (current !== player.typeName) {
     if (player.isInvincibility()) {
       // 無敵のときだけ触れている床の色を変える
-      // ただ結局移動制限かかって移動できない
-      masses[idx[0]][idx[1]].changeTypeName(player.typeName);
-      socket.emit(events.CHANGE_MASS_TYPENAME, [{x:idx[0],y:idx[1],typeName:player.typeName}]);
+      if (!player.isLaunching()) {
+        console.log('idx[0]]:'+idx[0]+' / [idx[1]: '+ idx[1])
+        masses[idx[0]][idx[1]].changeTypeName(player.typeName);
+        socket.emit(events.CHANGE_MASS_TYPENAME, [{x:idx[0],y:idx[1],typeName:player.typeName}]);
+      }
     } else if (!player.isDead()){
       // 敵のマスにいるので死ぬ
       console.log("[DIED]")
       player.die();
     }
   }
+}
+
+function bulletAndEnemyCollisionHandler(_bullet, _enemy) {
+  const collisionBullet = bulletsMapping[_bullet.name];
+  if (typeof collisionBullet === 'undefined' || collisionBullet.isDestroyed()) {
+    return;
+  }
+  const collisionEnemy = enemiesMapping[_enemy.name];
+  if (typeof collisionEnemy === 'undefined' || collisionEnemy.isDead()) {
+    return;
+  }
+
+  collisionEnemy.die();
+  collisionBullet.destroy();
+
+  socket.emit(events.KILL_ENEMY, {id: collisionEnemy.id});
+  //// 自分の弾丸なら加算
+  //if (myBullets.indexOf(collisionBullet) !== -1) {
+  //  score += 30;
+  //}
 }
 
 function playerAndBulletCollisionHandler(_player, bullet) {
@@ -457,6 +491,10 @@ function setSocketEventHandlers(socket) {
   socket.on(events.MOVE_BULLETS, onBulletsMoved);
   socket.on(events.INITIAL_MASSES, onInitialMasses);
   socket.on(events.CHANGE_MASS_TYPENAME, onMassTypeNameChanged);
+  socket.on(events.POP_ENEMY, onEnemyPopped);
+  socket.on(events.UPDATE_ENEMY_STATUS, onEnemyStatusUpdated);
+  socket.on(events.KILL_ENEMY, onEnemyKilled);
+  socket.on(events.APPEND_SCORE, onScoreAppended);
 }
 
 function onSocketConnected() {
@@ -538,7 +576,6 @@ function onBulletsCreated(data) {
 }
 
 function onBulletsDestroyed(data) {
-  console.log('onBulletsDestroyed =>', data);
   data
     .filter(uuid => bulletsMapping.hasOwnProperty(uuid))
     .forEach(uuid => {
@@ -563,6 +600,41 @@ function onBulletsMoved(data) {
     });
 
   //console.log("CURRENT BULLES => ", bullets);
+}
+
+function onEnemyPopped(data) {
+  console.log('onEnemyPopped');
+  const enemy = Enemy.fromEmitData({game, group: enemyGroup}, data);
+  enemy.updateStatus(data);
+  enemies.push(enemy);
+  enemiesMapping[enemy.id] = enemy;
+}
+
+function onEnemyStatusUpdated(data) {
+  data.forEach(d => {
+    const enemy = enemiesMapping[d.id];
+    if (typeof enemy === 'undefined') {
+      return;
+    }
+    enemy.updateStatus(d);
+  })
+}
+function onEnemyKilled(data) {
+  const enemy = enemiesMapping[data.id];
+
+  if (typeof enemy === 'undefined') {
+    return;
+  }
+
+  enemy.die();
+
+  enemies.splice(enemies.indexOf(enemy), 1);
+  delete enemiesMapping[data.id];
+}
+
+function onScoreAppended(data) {
+  console.log('append score');
+  score += data.score;
 }
 
 function cleanBullet(uuid) {
@@ -611,6 +683,7 @@ function onMassTypeNameChanged(data) {
     masses[d.x][d.y].changeTypeName(d.typeName);
   })
 }
+
 
 function onGameStarted(data) {
 

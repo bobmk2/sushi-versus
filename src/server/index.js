@@ -37,6 +37,8 @@ import events from './websocket/Events';
 import Player from './ServerPlayer';
 import Bullet from './ServerBullet';
 import Mass from './ServerMass';
+import Enemy from './ServerEnemy';
+import Uuid from 'node-uuid';
 
 var socket;
 var players = [];
@@ -44,6 +46,9 @@ var playersMapping = {};
 
 var bullets = [];
 var bulletsMapping = {};
+
+var enemies = [];
+var enemiesMapping = {};
 
 var masses = [];
 
@@ -65,6 +70,9 @@ server.listen(port, function(err){
   }
 
   setEventHandlers();
+
+  setInterval(onPopEnemy, 5000);
+  setInterval(onUpdateEnemyStatus, 100);
 
 //  var frameRate = 10;
 //  setInterval(() => {
@@ -102,7 +110,12 @@ server.listen(port, function(err){
 
 var setEventHandlers = function() {
   socket.sockets.on('connection', onSocketConnection);
+  socket.sockets.on('disconnection', onSocketDisconnection);
 };
+
+
+// FIXME: maybe exists good solution for broadcasting on interval
+const clients = {};
 
 function onSocketConnection(client) {
   util.log('player has connected: ' + client.id);
@@ -113,6 +126,13 @@ function onSocketConnection(client) {
   client.on(events.MOVE_BULLETS, onMoveBullets);
   client.on(events.DESTROY_BULLETS, onDestroyBullets);
   client.on(events.CHANGE_MASS_TYPENAME, onChangeMassTypeName);
+  client.on(events.KILL_ENEMY, onKillEnemy);
+
+  clients[client.id] = client;
+
+//  setInterval(onUpdateEnemyStatus, 100);
+
+
   //client.on(events.MOVE_PLAYER, onMovePlayer);
   //client.on('show hmm', onShowHmm);
   //client.on('hide hmm', onHideHmm);
@@ -120,29 +140,60 @@ function onSocketConnection(client) {
   //client.on('drop tamago', onDropTamago);
 }
 
+function onSocketDisconnection(client) {
+  util.log('player has disconnected' + client.id);
+  delete clients[client.id];
+
+  // プレイヤーがいなくなったら敵も消す
+  if (Object.keys(clients).length === 0) {
+    enemies = [];
+    enemiesMapping = {};
+  }
+}
 
 function onClientDisconnect(){
   util.log('player has disconnected: ' + this.id);
+  onDisconnect(this.broadcast, this.id);
 
-  var removePlayer = playersMapping[this.id];
+  //var removePlayer = playersMapping[this.id];
+  //if (typeof removePlayer === 'undefined') {
+  //  util.log('Player not found: '+ this.id);
+  //  return;
+  //}
+  //
+  //// プレイヤーに紐づく弾丸も削除
+  //var desBullets = bullets.filter(
+  //  bullet => this.id === bullet.playerId
+  //).map(bullet => {
+  //  cleanBullet(bullet.uuid);
+  //  return bullet.uuid;
+  //});
+  //
+  //players.splice(players.indexOf(removePlayer), 1);
+  //delete playersMapping[this.id];
+  //this.broadcast.emit(events.REMOVE_PLAYER, {id: this.id});
+  //this.broadcast.emit(events.DESTROY_BULLETS, desBullets);
+}
+
+function onDisconnect(broadcast, connectionId) {
+  var removePlayer = playersMapping[connectionId];
   if (typeof removePlayer === 'undefined') {
-    util.log('Player not found: '+ this.id);
+    util.log('Player not found: '+ connectionId);
     return;
   }
 
   // プレイヤーに紐づく弾丸も削除
   var desBullets = bullets.filter(
-    bullet => this.id === bullet.playerId
+    bullet => connectionId === bullet.playerId
   ).map(bullet => {
     cleanBullet(bullet.uuid);
     return bullet.uuid;
   });
 
   players.splice(players.indexOf(removePlayer), 1);
-  delete playersMapping[this.id];
-  this.broadcast.emit(events.REMOVE_PLAYER, {id: this.id});
-
-  this.broadcast.emit(events.DESTROY_BULLETS, desBullets);
+  delete playersMapping[connectionId];
+  broadcast.emit(events.REMOVE_PLAYER, {id: connectionId});
+  broadcast.emit(events.DESTROY_BULLETS, desBullets);
 }
 
 function onNewPlayer(data) {
@@ -332,4 +383,86 @@ function cleanBullet(uuid) {
   let destroyBullet = bulletsMapping[uuid];
   bullets.splice(bullets.indexOf(destroyBullet), 1);
   delete bulletsMapping[uuid];
+}
+
+function onPopEnemy() {
+  // TODO 今は増えすぎると何が起きるかわらかないので20制限
+  if (enemies.length >= 10) {
+    return;
+  }
+
+  const existsPlayers = players.filter(player => !player._death);
+  if (existsPlayers.length === 0) {
+    return;
+  }
+
+  // 敵を作る
+  const enemy = new Enemy({id: Uuid.v4()});
+  enemies.push(enemy);
+  enemiesMapping[enemy.id] = enemy;
+
+  // 各クライアントに通知
+  Object.keys(clients).forEach(key => {
+    const client = clients[key];
+    client.emit(events.POP_ENEMY, enemy.getEmitData());
+  });
+}
+
+function onUpdateEnemyStatus() {
+  const existsPlayers = players.filter(player => !player._death);
+  if (existsPlayers.length === 0) {
+    return;
+  }
+
+  // 敵を動かす
+  const invasionMasses = {};
+  enemies.forEach(enemy => {
+    enemy.update();
+    enemy.move(players);
+
+    // TODO 最適化
+    let invasions = enemy.getInvasionMass();
+    invasions.forEach(i => {
+      invasionMasses[i] = true;
+    });
+  });
+
+  const emitArray = enemies.map(enemy => enemy.getEmitData());
+  if (emitArray.length > 0){
+    Object.keys(clients).forEach(key => {
+      const client = clients[key];
+      client.emit(events.UPDATE_ENEMY_STATUS, emitArray);
+    });
+  }
+
+  if (Object.keys(invasionMasses).length > 0) {
+
+    // 変える必要が無いのなら送らない
+    var invations = Object.keys(invasionMasses).map(massIndex => {
+      const idx = massIndex.split('-').map(s => parseInt(s));
+      if (masses[idx[1]][idx[0]].typeName === 'default') {
+        return null;
+      }
+      return {x: idx[1], y: idx[0], typeName: 'default'}
+    })
+      .filter(s => s !== null);
+
+    Object.keys(clients).forEach(key => {
+      const client = clients[key];
+      client.emit(events.CHANGE_MASS_TYPENAME, invations);
+    });
+  }
+}
+
+function onKillEnemy(data) {
+  const enemy = enemiesMapping[data.id];
+  if (typeof enemy === 'undefined') {
+    return;
+  }
+
+  enemies.splice(enemies.indexOf(enemy), 1);
+  delete enemiesMapping[data.id];
+
+  this.emit(events.APPEND_SCORE, {score: 50});
+  this.broadcast.emit(events.KILL_ENEMY, {id: data.id});
 }

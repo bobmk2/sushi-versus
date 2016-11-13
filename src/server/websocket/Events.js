@@ -10,6 +10,11 @@ const UPDATE_PLAYER_STATUS = 'update-player-status';
 const DESTROY_BULLETS = 'destory-bullets';
 const CHANGE_MASS_TYPENAME = 'change-mass-typename';
 
+const POP_ENEMY = 'pop-enemy';
+const UPDATE_ENEMY_STATUS = 'update-enemy-status';
+const KILL_ENEMY = 'kill-enemy';
+const APPEND_SCORE = 'append-score';
+
 export default {
   CONNECT,
   DISCONNECT,
@@ -20,5 +25,9 @@ export default {
   UPDATE_PLAYER_STATUS,
   CREATE_BULLETS,
   DESTROY_BULLETS,
-  CHANGE_MASS_TYPENAME
+  CHANGE_MASS_TYPENAME,
+  POP_ENEMY,
+  UPDATE_ENEMY_STATUS,
+  KILL_ENEMY,
+  APPEND_SCORE
 }

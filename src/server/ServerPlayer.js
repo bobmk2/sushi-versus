@@ -1,5 +1,5 @@
 class Player {
-  constructor({id, typeName, x, y, bulletChamber, chargingPower, invincibility, death}) {
+  constructor({id, typeName, x, y, bulletChamber, chargingPower, invincibility, death, launching}) {
     this._playerId = id;
     this._x = x;
     this._y = y;
@@ -8,6 +8,7 @@ class Player {
     this._chargingPower = chargingPower;
     this._invincibility = invincibility;
     this._death = death;
+    this._launching = launching;
   }
 
   getPlayerId() {
@@ -32,7 +33,8 @@ class Player {
     this._bulletChamber = data.bulletChamber;
     this._chargingPower = data.chargingPower;
     this._invincibility = data.invincibility;
-    this._death = data.death;
+    this._death = data.deadFlag;
+    this._launching = data.launching;
   }
 
   getEmitData() {
@@ -44,7 +46,8 @@ class Player {
       bulletChamber: this._bulletChamber,
       chargingPower: this._chargingPower,
       invincibility: this._invincibility,
-      death: this._death
+      deadFlag: this._death,
+      launching: this._launching
     }
   }
 }

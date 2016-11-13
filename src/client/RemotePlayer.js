@@ -2,7 +2,7 @@ import {DIFF_X, DIFF_Y} from './BulletChamber';
 import Bullet from './Bullet';
 
 class RemotePlayer {
-  constructor(game, id, typeName, x, y, bulletRest, chargingPower, invincibility, death) {
+  constructor(game, id, typeName, x, y, bulletRest, chargingPower, invincibility, death, launching) {
     this.playerId = id;
     this.game = game;
 
@@ -18,11 +18,15 @@ class RemotePlayer {
     this.chargeEffect.visible = false;
     this.invincibility = invincibility;
 
-    this.death = death;
+    this.deadFlag = death;
 
     this.invincibilityTween = game.add.tween(this.image).to({alpha:0.1}, 200, Phaser.Easing.Linear.None, true, 0, 0, true).loop(true);
     if (this.invincibility) {
-      this.invincibilityTween.start();
+      if (this.launching) {
+        // 何もしない
+      } else {
+        this.invincibilityTween.start();
+      }
     } else {
       this.image.alpha = 1.0;
       this.invincibilityTween.stop();
@@ -30,6 +34,24 @@ class RemotePlayer {
 
     this.bulletRest = bulletRest;
     this.chargingPower = chargingPower;
+
+    this.launching = launching;
+    const launchingEffect = game.add.sprite(x, y, 'launching-effect');
+    launchingEffect.scale.set(2.5);
+    launchingEffect.anchor.set(0.5);
+    launchingEffect.animations.add('maguro', [1], 1, false);
+    launchingEffect.animations.add('tamago', [2], 1, false);
+    launchingEffect.animations.play(typeName);
+    game.add.tween(launchingEffect.scale).to({x: 2, y:2}, 500, Phaser.Easing.Linear.None, true, 0, 0, false).loop(true);
+    game.add.tween(launchingEffect).to({alpha: 0.5}, 500, Phaser.Easing.Linear.None, true, 0, 0, false).loop(true);
+    this.launchingEffect = launchingEffect;
+
+    if (launching) {
+      this.image.visible = false;
+      this.chargeEffect.visible =false;
+    } else {
+      launchingEffect.kill();
+    }
 
     var bullets = [
       new Bullet({game}, null, typeName, x - DIFF_X, y + DIFF_Y),
@@ -43,14 +65,14 @@ class RemotePlayer {
     this.deadFlag = false;
 
     // 最初から死んでたら何も描画させない
-    console.log("DEATH >" + this.death)
-    if (this.death) {
+    if (this.deadFlag) {
       this.deadFlag = true;
       this.image.kill();
       this.chargeEffect.kill();
       this.bullets.forEach(bullet => {
         bullet.kill();
       });
+      this.launchingEffect.kill();
     }
 
     this._updateLastPosition();
@@ -64,7 +86,17 @@ class RemotePlayer {
     this.setPos(data.x, data.y);
     this.bulletRest = data.bulletChamber.rest;
     this.chargingPower = data.chargingPower;
-    this.death = data.death;
+    this.deadFlag = data.deadFlag;
+
+    console.log("LAUNCHING => "+this.launching+" / " + data.launching);
+    if (this.launching && !data.launching) {
+      if (this.launchingEffect.alive) {
+        this.launchingEffect.kill();
+      }
+      this.image.visible = true;
+      this.chargeEffect.visible =true;
+    }
+    this.launching = data.launching;
 
     if (!this.invincibility && data.invincibility) {
       this.invincibilityTween.start();
@@ -93,7 +125,7 @@ class RemotePlayer {
       });
     }
 
-    if (this.death) {
+    if (this.deadFlag) {
       this.die();
     }
   }
@@ -186,7 +218,8 @@ class RemotePlayer {
       data.bulletChamber.rest,
       data.chargingPower,
       data.invincibility,
-      data.death
+      data.deadFlag,
+      data.launching
   )
   }
 }

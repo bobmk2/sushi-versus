@@ -14,24 +14,36 @@ class Player {
     this.bulletSpeed = 4;
 
     this.image = game.add.sprite(startX, startY, typeName);
-    this.name = 'player';
-    this.image.scale.set(2);
-    this.image.anchor.setTo(0.5, 0.5);
-    this.image.smoothed = false;
-    game.physics.arcade.enable(this.image);
+    this.image.visible = false;
 
     this.invincibilityTween = game.add.tween(this.image).to({alpha:0.1}, 200, Phaser.Easing.Linear.None, true, 0, 0, true).loop(true);
+    this.invincibilityTween.pause();
 
     this.chargeEffect = game.add.image(startX, startY, typeName);
-    this.chargeEffect.anchor.setTo(0.5,0.5);
+    this.chargeEffect.anchor.set(0.5);
     this.chargeEffect.scale.set(3.5);
     this.chargeEffect.alpha = 0.3;
     this.chargeEffect.visible = false;
 
+    const launchingEffect = game.add.sprite(startX, startY, 'launching-effect');
+    launchingEffect.scale.set(2.5);
+    launchingEffect.anchor.set(0.5);
+    launchingEffect.animations.add('maguro', [1], 1, false);
+    launchingEffect.animations.add('tamago', [2], 1, false);
+    launchingEffect.animations.play(typeName);
+    game.add.tween(launchingEffect.scale).to({x: 2, y:2}, 500, Phaser.Easing.Linear.None, true, 0, 0, false).loop(true);
+    game.add.tween(launchingEffect).to({alpha: 0.5}, 500, Phaser.Easing.Linear.None, true, 0, 0, false).loop(true);
+    this.launchingEffect = launchingEffect;
+
     this.bulletChamber = new BulletChamber(this.game, this, typeName, this.image.x, this.image.y);
+    this.bulletChamber.setVisible(false);
 
     this.chargingDirection = null;
     this.chargingStart = -1;
+
+    // 3秒警告を出す
+    this.launching = true;
+    this.launchedTime = Number.MAX_VALUE;
 
     this._updateLastPosition();
 
@@ -40,6 +52,7 @@ class Player {
     this.chargingPower = 0;
 
     this.invincibility = true;
+
     this.popTime = Date.now();
 
     this.deadFlag = false;
@@ -73,7 +86,7 @@ class Player {
   }
 
   move(x, y) {
-    if (this.isDead()) {
+    if (this.isDead() || this.launching) {
       return;
     }
 
@@ -87,6 +100,28 @@ class Player {
 
   update() {
     const now = Date.now();
+
+    if (this.launching) {
+
+      // 3秒後に登場
+      if ((now - this.popTime) >= 3000) {
+        this.launching = false;
+        this.launchedTime = now;
+        this.image.visible = true;
+        this.invincibilityTween.resume();
+        this.launchingEffect.kill();
+
+        this.bulletChamber.setVisible(true);
+
+        this.game.physics.arcade.enable(this.image);
+        this.name = 'player';
+        this.image.scale.set(2);
+        this.image.anchor.setTo(0.5, 0.5);
+        this.image.smoothed = false;
+        this.requiredEmit();
+      }
+      return;
+    }
 
     if (this.chargingDirection !== null) {
       const last = this.chargingPower;
@@ -112,7 +147,7 @@ class Player {
     }
 
     // 2秒間は無敵 + いる場所を自分の色に変える
-    if (this.invincibility && (now - this.popTime) >= 2000) {
+    if (this.invincibility && (now - this.launchedTime) >= 2000) {
       this.invincibility = false;
 
       this.image.alpha = 1.0;
@@ -123,8 +158,8 @@ class Player {
   }
 
   shoot() {
-    if (this.isDead()) {
-      return;
+    if (this.isDead() || this.launching) {
+      return null;
     }
 
     if (this.bulletChamber.getRest() === 0 || this.chargingDirection === null) {
@@ -191,6 +226,9 @@ class Player {
     if (this.isDead()) {
       return;
     }
+    if (this.launching) {
+      return;
+    }
 
     if ((!up && !down && !left && !right)
       || this.chargingDirection !== null
@@ -245,7 +283,8 @@ class Player {
       bulletChamber: this.bulletChamber.getEmitData(),
       chargingPower: this.chargingPower,
       invincibility: this.invincibility,
-      death: this.deadFlag
+      deadFlag: this.deadFlag,
+      launching: this.launching
     }
   }
 
@@ -291,6 +330,9 @@ class Player {
     return this.deadFlag;
   }
 
+  isLaunching() {
+    return this.launching;
+  }
 }
 
 export default Player;
