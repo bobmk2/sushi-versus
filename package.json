@@ -20,7 +20,7 @@
     "socket.io": "^1.5.1"
   },
   "engines": {
-    "node": "4.4.5"
+    "node": "6.4.0"
   },
   "repository": {
     "type": "git",
