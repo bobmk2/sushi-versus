@@ -26,5 +26,5 @@ gulp.task('build:js', () => {
 
 gulp.task('build', () => runSequence('clean', 'build:js'));
 gulp.task('watch', runSequence('build'), () => {
-  gulp.watch('./src/**/*.js', () => runSequence('build'));
+  gulp.watch('./src/server/**/*.js', () => runSequence('build'));
 });

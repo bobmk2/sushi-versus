@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "./bin/server.sh",
+    "start:server": "node dist/server/index.js",
     "build": "gulp build && cross-env NODE_ENV=production webpack --config client-webpack.prod.config.js",
     "watch:server": "gulp watch",
     "build:server": "gulp build",
@@ -14,6 +15,8 @@
   "dependencies": {
     "express": "^4.13.3",
     "forever": "^0.15.3",
+    "isomorphic-fetch": "^2.2.1",
+    "node-uuid": "^1.4.7",
     "phaser": "^2.6.2",
     "socket.io": "^1.5.1"
   },
