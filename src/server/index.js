@@ -168,7 +168,6 @@ function onNewPlayer(data) {
 
   // このプレイヤーに他のプレイヤーのことを伝える
   players.forEach(player => {
-    console.log("NOTICE")
     console.log(player.getEmitData())
     this.emit(events.NEW_PLAYER, player.getEmitData());
 

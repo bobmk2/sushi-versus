@@ -43,7 +43,6 @@ class Player {
     this.popTime = Date.now();
 
     this.deadFlag = false;
-    this.isEnableEndroll = false;
   }
 
   isInvincibility() {

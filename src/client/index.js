@@ -28,11 +28,12 @@ fetch('/api/players.json')
     } else {
       playerTypeName = 'maguro';
     }
+    document.getElementById('main').className=`team-${playerTypeName}`
 
     game = new Phaser.Game(960, 640, Phaser.AUTO, 'game', { preload: preload, create: create, update:update});
   })
   .catch(err => {
-    console.err('happend error :(', err);
+    console.error('happend error :(', err);
   });
 
 
@@ -158,7 +159,7 @@ function endRoll() {
   if (!player.image.alive) {
     raunchedEndRoll = true;
 
-    const overlay = game.add.sprite(0, 0, 'overlay');
+    const overlay = game.add.image(0, 0, 'overlay');
     overlay.scale.setTo(30, 20);
     overlay.alpha = 0;
 
@@ -174,7 +175,7 @@ function endRoll() {
       const sushiEffect = game.add.sprite(sushi.x, sushi.y, player.typeName);
       sushiEffect.scale.set(4);
       sushiEffect.anchor.set(0.5);
-      sushiEffect.alpha = 0.5
+      sushiEffect.alpha = 0.5;
       game.add.tween(sushiEffect).to({angle:360}, 250, Phaser.Easing.Linear.None, true, 0, 0, false).loop(true);
 
       const retryButton = game.add.button(game.world.centerX - 120, 500, 'retry-button', actionOnClick, this, 1, 0, 2);
@@ -476,6 +477,7 @@ function onNewPlayer(data) {
   console.log('New player connected:', data.id, data.x, data.y);
 
   const remotePlayer = RemotePlayer.fromEmitData(game, data)//new RemotePlayer(data.id, game, data.x, data.y);
+  remotePlayer.updateStatus(data);
   anotherPlayers.push(remotePlayer);
   playerMapping[data.id] = remotePlayer;
 }

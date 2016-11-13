@@ -2,7 +2,7 @@ import {DIFF_X, DIFF_Y} from './BulletChamber';
 import Bullet from './Bullet';
 
 class RemotePlayer {
-  constructor(game, id, typeName, x, y, bulletRest, chargingPower, invincibility) {
+  constructor(game, id, typeName, x, y, bulletRest, chargingPower, invincibility, death) {
     this.playerId = id;
     this.game = game;
 
@@ -17,6 +17,8 @@ class RemotePlayer {
     this.chargeEffect.alpha = 0.3;
     this.chargeEffect.visible = false;
     this.invincibility = invincibility;
+
+    this.death = death;
 
     this.invincibilityTween = game.add.tween(this.image).to({alpha:0.1}, 200, Phaser.Easing.Linear.None, true, 0, 0, true).loop(true);
     if (this.invincibility) {
@@ -38,14 +40,31 @@ class RemotePlayer {
     ];
     this.bullets = bullets;
 
+    this.deadFlag = false;
+
+    // 最初から死んでたら何も描画させない
+    console.log("DEATH >" + this.death)
+    if (this.death) {
+      this.deadFlag = true;
+      this.image.kill();
+      this.chargeEffect.kill();
+      this.bullets.forEach(bullet => {
+        bullet.kill();
+      });
+    }
+
     this._updateLastPosition();
   }
 
   updateStatus(data) {
+    if (this.deadFlag) {
+      return;
+    }
     this.typeName = data.typeName;
     this.setPos(data.x, data.y);
     this.bulletRest = data.bulletChamber.rest;
     this.chargingPower = data.chargingPower;
+    this.death = data.death;
 
     if (!this.invincibility && data.invincibility) {
       this.invincibilityTween.start();
@@ -73,6 +92,46 @@ class RemotePlayer {
         }
       });
     }
+
+    if (this.death) {
+      this.die();
+    }
+  }
+
+  die() {
+    if (this.deadFlag) {
+      return;
+    }
+    this.deadFlag = true;
+
+    this.image.angle = 0;
+    this.chargingDirection = null;
+    this.chargingStart = -1;
+    this.chargingPower = 0;
+    this.chargeEffect.visible = false;
+    this.chargeEffect.angle = 0;
+
+    // 死亡エフェクト
+    const effect = this.game.add.sprite(this.image.x, this.image.y, this.typeName);
+    effect.scale.set(2);
+    effect.anchor.setTo(0.5, 0.5);
+    effect.smoothed = false;
+
+    const tween = this.game.add.tween(effect.scale).to({x:5, y:5}, 2000, Phaser.Easing.Exponential.Out, true, 0, 0, false);
+    this.game.add.tween(effect).to({alpha:0}, 2000, Phaser.Easing.Exponential.Out, true, 0, 0, false);
+
+    this.image.visible = false;
+    const image = this.image;
+    tween.onComplete.add(()=>{
+      image.kill();
+      effect.kill();
+    }, this);
+
+    // 弾も破裂させる
+    this.bullets.forEach(bullet => {
+      bullet.startBurstEffect();
+      bullet.kill();
+    });
   }
 
   update() {
@@ -104,9 +163,17 @@ class RemotePlayer {
   }
 
   remove() {
-    this.image.kill();
-    this.bullets.forEach(bullet => bullet.kill());
-    this.chargeEffect.kill();
+    if (this.image.alive) {
+      this.image.kill();
+    }
+    this.bullets.forEach(bullet => {
+      if (bullet.image.alive) {
+        bullet.kill();
+      }
+    });
+    if (this.chargeEffect.alive) {
+      this.chargeEffect.kill();
+    }
   }
 
   static fromEmitData(game, data) {
@@ -118,7 +185,8 @@ class RemotePlayer {
       data.y,
       data.bulletChamber.rest,
       data.chargingPower,
-      data.invincibility
+      data.invincibility,
+      data.death
   )
   }
 }
