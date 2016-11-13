@@ -21,7 +21,7 @@
     "socket.io": "^1.5.1"
   },
   "engines": {
-    "node": "6.7.0"
+    "node": "4.4.5"
   },
   "repository": {
     "type": "git",
