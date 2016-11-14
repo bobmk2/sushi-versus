@@ -63,9 +63,7 @@ class RemotePlayer {
     this.bullets = bullets;
 
     // 最初から死んでたら何も描画させない
-    console.log(this.deadFlag);
     if (this.deadFlag) {
-      console.log("FFFFF")
       this.deadFlag = true;
       this.image.kill();
       this.chargeEffect.kill();
@@ -79,14 +77,19 @@ class RemotePlayer {
   }
 
   updateStatus(data) {
-    if (this.deadFlag) {
-      return;
-    }
     this.typeName = data.typeName;
     this.setPos(data.x, data.y);
     this.bulletRest = data.bulletChamber.rest;
     this.chargingPower = data.chargingPower;
+
+    if(!this.deadFlag && data.death) {
+      this.die();
+    }
     this.deadFlag = data.death;
+
+    if (this.deadFlag) {
+      return;
+    }
 
     if (this.launching && !data.launching) {
       if (this.launchingEffect.alive) {
@@ -122,10 +125,6 @@ class RemotePlayer {
           bullet.empty();
         }
       });
-    }
-
-    if (this.deadFlag) {
-      this.die();
     }
   }
 
