@@ -62,10 +62,10 @@ class RemotePlayer {
     ];
     this.bullets = bullets;
 
-    this.deadFlag = false;
-
     // 最初から死んでたら何も描画させない
+    console.log(this.deadFlag);
     if (this.deadFlag) {
+      console.log("FFFFF")
       this.deadFlag = true;
       this.image.kill();
       this.chargeEffect.kill();

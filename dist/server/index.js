@@ -97,7 +97,7 @@ server.listen(port, function (err) {
 
   setEventHandlers();
 
-  setInterval(onPopEnemy, 5000);
+  setInterval(onPopEnemy, 7500);
   setInterval(onUpdateEnemyStatus, 100);
 
   //  var frameRate = 10;
@@ -290,8 +290,6 @@ function onNewPlayer(data) {
 //}
 
 function onUpdatePlayerStatus(data) {
-  (0, _dump2.default)(data);
-
   var updatePlayer = playersMapping[this.id];
   if (typeof updatePlayer === 'undefined') {
     util.log('Player not found: ' + this.id);

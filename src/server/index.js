@@ -256,8 +256,6 @@ function onNewPlayer(data) {
 //}
 
 function onUpdatePlayerStatus(data) {
-  dump(data);
-
   var updatePlayer = playersMapping[this.id];
   if (typeof updatePlayer === 'undefined') {
     util.log(`Player not found: ${this.id}`);

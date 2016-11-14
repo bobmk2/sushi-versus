@@ -62,12 +62,16 @@ var ServerEnemy = function () {
     value: function move(_players) {
       var _this = this;
 
+      var now = Date.now();
+
       // 登場準備中は何もしない
       if (this.launching) {
+        this.lastMovedTime = now;
         return;
       }
 
       if (_players.length === 0) {
+        this.lastMovedTime = now;
         return;
       }
       var players = _players.filter(function (player) {
@@ -78,6 +82,7 @@ var ServerEnemy = function () {
         return !player._death;
       });
       if (players.length === 0) {
+        this.lastMovedTime = now;
         return;
       }
 
@@ -105,13 +110,25 @@ var ServerEnemy = function () {
       var radian = Math.atan2(target._y - this.y, target._x - this.x);
 
       // 移動距離
-      var now = Date.now();
       var moveX = Math.cos(radian) * ((now - this.lastMovedTime) * this.speed_1ms);
       var moveY = Math.sin(radian) * ((now - this.lastMovedTime) * this.speed_1ms);
       this.lastMovedTime = now;
 
       this.x += moveX;
       this.y += moveY;
+
+      if (this.x < 0) {
+        this.x = 0;
+      }
+      if (this.x > 960) {
+        this.x = 960;
+      }
+      if (this.y < 0) {
+        this.y = 0;
+      }
+      if (this.y > 640) {
+        this.y = 640;
+      }
     }
   }, {
     key: "getInvasionMass",
