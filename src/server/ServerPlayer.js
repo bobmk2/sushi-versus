@@ -28,12 +28,15 @@ class Player {
   }
 
   updateStatus(data) {
+    console.log("UPDATE")
+    console.log(data);
+
     this._typeName = data.typeName;
     this.setPos(data.x, data.y);
     this._bulletChamber = data.bulletChamber;
     this._chargingPower = data.chargingPower;
     this._invincibility = data.invincibility;
-    this._death = data.deadFlag;
+    this._death = data.death;
     this._launching = data.launching;
   }
 
@@ -46,7 +49,7 @@ class Player {
       bulletChamber: this._bulletChamber,
       chargingPower: this._chargingPower,
       invincibility: this._invincibility,
-      deadFlag: this._death,
+      death: this._death,
       launching: this._launching
     }
   }

@@ -71,7 +71,7 @@ server.listen(port, function(err){
 
   setEventHandlers();
 
-  setInterval(onPopEnemy, 5000);
+  setInterval(onPopEnemy, 7500);
   setInterval(onUpdateEnemyStatus, 100);
 
 //  var frameRate = 10;

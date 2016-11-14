@@ -509,7 +509,7 @@ function onSocketDisconnected() {
 }
 
 function onNewPlayer(data) {
-  console.log('New player connected:', data.id, data.x, data.y);
+  console.log('New player connected:', data);
 
   const remotePlayer = RemotePlayer.fromEmitData(game, data)//new RemotePlayer(data.id, game, data.x, data.y);
   remotePlayer.updateStatus(data);

@@ -290,7 +290,7 @@ class Player {
       bulletChamber: this.bulletChamber.getEmitData(),
       chargingPower: this.chargingPower,
       invincibility: this.invincibility,
-      deadFlag: this.deadFlag,
+      death: this.deadFlag,
       launching: this.launching
     }
   }

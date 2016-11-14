@@ -86,9 +86,8 @@ class RemotePlayer {
     this.setPos(data.x, data.y);
     this.bulletRest = data.bulletChamber.rest;
     this.chargingPower = data.chargingPower;
-    this.deadFlag = data.deadFlag;
+    this.deadFlag = data.death;
 
-    console.log("LAUNCHING => "+this.launching+" / " + data.launching);
     if (this.launching && !data.launching) {
       if (this.launchingEffect.alive) {
         this.launchingEffect.kill();
@@ -218,7 +217,7 @@ class RemotePlayer {
       data.bulletChamber.rest,
       data.chargingPower,
       data.invincibility,
-      data.deadFlag,
+      data.death,
       data.launching
   )
   }
