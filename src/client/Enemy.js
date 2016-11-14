@@ -38,7 +38,7 @@ class Enemy {
     console.log("INIT IMAGE");
 
     const image = this.group.create(this.x, this.y, 'dish');
-    image.scale.set(2);
+    image.scale.set(3);
     image.name = this.id;
     image.anchor.set(0.5);
     this.game.add.tween(image).to({angle: 360}, 1000, Phaser.Easing.Linear.None, true, 0, 0, false).loop(true);
@@ -78,8 +78,8 @@ class Enemy {
 
     // エフェクト
     const effect = this.game.add.sprite(this.image.x, this.image.y, 'dish');
-    effect.scale.set(2);
-    effect.anchor.setTo(0.5, 0.5);
+    effect.anchor.set(0.5);
+    effect.scale.set(3);
     effect.smoothed = false;
     effect.angle = this.image.angle;
     this.game.add.tween(effect.scale).to({x:5, y:5}, 2000, Phaser.Easing.Exponential.Out, true, 0, 0, false);
