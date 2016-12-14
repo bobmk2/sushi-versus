@@ -1,6 +1,6 @@
 # SUSHI-VERSUS
 
-- I wrote this code for [Node Knockout 2016](https://www.nodeknockout.com/) in 2 days.
+- I wrote this code in [Node Knockout 2016](https://www.nodeknockout.com/) in 2 days.
   - Entry Page: https://www.nodeknockout.com/entries/80-team-kuramae
 - This is multi-play shooting game with sushi.
 
@@ -34,8 +34,6 @@ npm run start:server
 - required test
 - required lint
 
-> But I'm not going to maintenance this repository because this code is written for node knockout 2016 :)
-
 ## About Game
 
 > Copy from entry page
@@ -59,20 +57,13 @@ Dish(NPC) is invader, closing your sushi with drawing your area by void area.
 #### Intro
 
 1. Move only to your team area
-
-![intro1](https://cloud.githubusercontent.com/assets/1858949/20252102/a78e21c2-aa62-11e6-820e-4034fb6c2355.png)
-
+  * ![intro1](https://cloud.githubusercontent.com/assets/1858949/20252102/a78e21c2-aa62-11e6-820e-4034fb6c2355.png)
 2. Drawing to another team area by bullets
-
-![intro2](https://cloud.githubusercontent.com/assets/1858949/20252100/a57274f6-aa62-11e6-9645-af60a156b1b6.png)
-
+  * ![intro2](https://cloud.githubusercontent.com/assets/1858949/20252100/a57274f6-aa62-11e6-9645-af60a156b1b6.png)
 3. Dead when you are in another team area
-
-![intro3](https://cloud.githubusercontent.com/assets/1858949/20252098/a3a53140-aa62-11e6-8819-9ed0049a05b2.png)
-
+  * ![intro3](https://cloud.githubusercontent.com/assets/1858949/20252098/a3a53140-aa62-11e6-8819-9ed0049a05b2.png)
 4. Dish is incoming to you with drawing void area
-
-![intro4](https://cloud.githubusercontent.com/assets/1858949/20252096/a19b96aa-aa62-11e6-9c10-43f05b8b51e0.png)
+  * ![intro4](https://cloud.githubusercontent.com/assets/1858949/20252096/a19b96aa-aa62-11e6-9c10-43f05b8b51e0.png)
 
 #### Directed
 
